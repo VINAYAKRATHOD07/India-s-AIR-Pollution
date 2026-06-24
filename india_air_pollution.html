@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>India Air Quality Dashboard — 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --accent: #e85d26;
+    --accent2: #f5a623;
+    --blue: #3b82f6;
+    --teal: #14b8a6;
+    --green: #22c55e;
+    --purple: #a855f7;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --border: rgba(255,255,255,0.07);
+    --card: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --font: 'Space Grotesk', sans-serif;
+    --font-display: 'Syne', sans-serif;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 3rem;
+    background: rgba(10,14,26,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--accent); letter-spacing: 0.05em; }
+  .nav-logo span { color: var(--text2); font-weight: 400; font-size: 0.85rem; display: block; letter-spacing: 0.02em; }
+  .nav-links { display: flex; gap: 2.5rem; }
+  .nav-links a { color: var(--text2); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: color 0.2s; letter-spacing: 0.03em; }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-badge {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white; padding: 0.4rem 1rem; border-radius: 50px;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 8rem 3rem 4rem;
+    position: relative; overflow: hidden;
+  }
+  .hero-grid {
+    position: absolute; inset: 0; z-index: 0;
+    background-image: 
+      linear-gradient(rgba(232,93,38,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,93,38,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .hero-glow {
+    position: absolute; width: 600px; height: 600px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(232,93,38,0.12) 0%, transparent 70%);
+    top: -100px; right: -100px; z-index: 0;
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 800px; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(232,93,38,0.1); border: 1px solid rgba(232,93,38,0.3);
+    color: var(--accent); padding: 0.4rem 1rem; border-radius: 50px;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+  .hero-tag::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 800; line-height: 1.05;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 .highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p { font-size: 1.1rem; color: var(--text2); max-width: 560px; line-height: 1.8; margin-bottom: 3rem; }
+  .hero-stats {
+    display: flex; gap: 3rem; flex-wrap: wrap;
+  }
+  .hero-stat { border-left: 2px solid var(--accent); padding-left: 1.25rem; }
+  .hero-stat .val { font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .hero-stat .lbl { font-size: 0.75rem; color: var(--text3); letter-spacing: 0.05em; margin-top: 4px; }
+  .scroll-hint {
+    position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--text3); font-size: 0.75rem; letter-spacing: 0.1em;
+  }
+  .scroll-hint .line { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--accent), transparent); animation: scrollDown 2s infinite; }
+  @keyframes scrollDown { 0%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1);transform-origin:top} 51%{transform:scaleY(1);transform-origin:bottom} 100%{transform:scaleY(0);transform-origin:bottom} }
+
+  /* YEAR LEGEND BAR */
+  .year-bar {
+    position: sticky; top: 65px; z-index: 90;
+    background: rgba(17,24,39,0.95); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 3rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  .year-label { font-size: 0.75rem; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .year-tabs { display: flex; gap: 0.5rem; }
+  .year-tab {
+    padding: 0.4rem 1.2rem; border-radius: 50px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    border: 1px solid var(--border); background: transparent; color: var(--text2);
+  }
+  .year-tab.active {
+    background: var(--accent); border-color: var(--accent); color: white;
+    box-shadow: 0 0 20px rgba(232,93,38,0.3);
+  }
+  .year-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .year-info-bar {
+    display: flex; gap: 2rem; align-items: center;
+  }
+  .year-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--card-border);
+    padding: 0.3rem 0.85rem; border-radius: 50px; font-size: 0.75rem;
+  }
+  .year-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .year-context { font-size: 0.75rem; color: var(--text3); font-style: italic; max-width: 320px; }
+
+  /* SECTIONS */
+  section {
+    padding: 5rem 3rem;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .section-header { margin-bottom: 3rem; }
+  .section-tag {
+    display: inline-block;
+    color: var(--accent); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .section-header h2 {
+    font-family: var(--font-display); font-size: 2rem; font-weight: 800;
+    letter-spacing: -0.01em; line-height: 1.2;
+  }
+  .section-header p { color: var(--text2); font-size: 0.95rem; margin-top: 0.5rem; max-width: 600px; }
+
+  /* CARDS */
+  .card {
+    background: var(--bg2); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 1.75rem;
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(232,93,38,0.3); }
+  .card-title { font-size: 0.75rem; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .card-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; line-height: 1; }
+  .card-sub { font-size: 0.8rem; color: var(--text3); margin-top: 0.5rem; }
+
+  /* GRIDS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .col-span-2 { grid-column: span 2; }
+
+  /* CHART CONTAINERS */
+  .chart-wrap { position: relative; width: 100%; height: 320px; }
+  .chart-wrap.tall { height: 420px; }
+  .chart-wrap.xl { height: 500px; }
+  .chart-label {
+    font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+    margin-bottom: 0.5rem; color: var(--text);
+  }
+  .chart-desc { font-size: 0.8rem; color: var(--text3); margin-bottom: 1rem; }
+
+  /* LEGEND */
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* FILTER CONTROLS */
+  .controls { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+  .ctrl-btn {
+    padding: 0.35rem 1rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; font-family: var(--font);
+    border: 1px solid var(--border); background: transparent; color: var(--text2);
+  }
+  .ctrl-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .ctrl-btn:hover:not(.active) { border-color: rgba(232,93,38,0.5); color: var(--accent); }
+  .ctrl-label { font-size: 0.75rem; color: var(--text3); margin-right: 0.25rem; }
+
+  /* DIVIDER */
+  .section-divider { height: 1px; background: var(--border); margin: 0 3rem; }
+
+  /* AQI METER */
+  .aqi-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 2rem; }
+  .aqi-tile {
+    padding: 0.75rem 0.5rem; border-radius: 10px; text-align: center;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    transition: transform 0.2s;
+    cursor: default;
+  }
+  .aqi-tile:hover { transform: translateY(-2px); }
+
+  /* POLLUTANT SELECTOR */
+  .poll-select { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .poll-btn {
+    padding: 0.3rem 0.9rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; font-family: var(--font);
+    border: 1px solid var(--border); background: transparent; color: var(--text2);
+  }
+  .poll-btn:hover { border-color: rgba(59,130,246,0.5); color: var(--blue); }
+
+  /* TEAM SECTION */
+  .team-section {
+    background: var(--bg2);
+    padding: 6rem 3rem;
+    border-top: 1px solid var(--border);
+  }
+  .team-section-inner { max-width: 1200px; margin: 0 auto; }
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 3rem; }
+  .team-card {
+    background: var(--bg3); border: 1px solid var(--card-border);
+    border-radius: 20px; padding: 2.5rem;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .team-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+  }
+  .team-card:hover::before { transform: scaleX(1); }
+  .team-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(232,93,38,0.1); border-color: rgba(232,93,38,0.2); }
+  .team-avatar {
+    width: 90px; height: 90px; border-radius: 50%; margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: white;
+    border: 3px solid rgba(232,93,38,0.3);
+    position: relative; overflow: hidden;
+  }
+  .team-avatar img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+  }
+  .team-name { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; margin-bottom: 0.25rem; }
+  .team-role { font-size: 0.8rem; color: var(--accent); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .team-id { font-size: 0.75rem; color: var(--text3); margin-bottom: 1rem; }
+  .team-bio { font-size: 0.875rem; color: var(--text2); line-height: 1.7; margin-bottom: 1.5rem; }
+  .team-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tag {
+    padding: 0.2rem 0.7rem; border-radius: 50px; font-size: 0.7rem; font-weight: 600;
+    background: rgba(232,93,38,0.1); border: 1px solid rgba(232,93,38,0.2); color: var(--accent);
+  }
+  .tag.blue { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); color: var(--blue); }
+  .tag.teal { background: rgba(20,184,166,0.1); border-color: rgba(20,184,166,0.2); color: var(--teal); }
+  .team-project {
+    margin-top: 3rem; padding: 2rem; background: var(--bg3); border: 1px solid var(--card-border); border-radius: 16px;
+  }
+  .team-project h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem; }
+  .team-project p { font-size: 0.875rem; color: var(--text2); line-height: 1.7; }
+  .project-meta { display: flex; gap: 2rem; margin-top: 1rem; }
+  .project-meta-item { font-size: 0.75rem; }
+  .project-meta-item span { display: block; color: var(--text3); margin-bottom: 2px; }
+  .project-meta-item strong { color: var(--text); }
+
+  /* FOOTER */
+  footer {
+    text-align: center; padding: 2rem 3rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--text3);
+  }
+
+  /* MAP */
+  #india-map svg { width: 100%; height: 100%; }
+  .tooltip {
+    position: fixed; z-index: 200;
+    background: var(--bg2); border: 1px solid var(--card-border);
+    padding: 0.75rem 1rem; border-radius: 10px;
+    font-size: 0.8rem; pointer-events: none;
+    box-shadow: var(--shadow);
+    display: none;
+  }
+  .tooltip h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+  .tooltip p { color: var(--text2); font-size: 0.75rem; }
+
+  /* RESPONSIVE */
+  @media(max-width: 900px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    section { padding: 3rem 1.5rem; }
+    .year-bar { padding: 0.75rem 1.5rem; }
+    .hero { padding: 7rem 1.5rem 4rem; }
+  }
+
+  /* ANIMATED COUNTER */
+  .counter { transition: all 0.5s ease; }
+
+  /* RANGE DISTRIBUTION */
+  .range-bar-wrap { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+  .range-bar-label { font-size: 0.75rem; color: var(--text2); min-width: 55px; text-align: right; }
+  .range-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden; }
+  .range-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
+  .range-bar-val { font-size: 0.75rem; color: var(--text3); min-width: 35px; }
+
+  /* SCROLL REVEAL */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <h4 id="tt-title"></h4>
+  <p id="tt-body"></p>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    VINHAR
+    <span>India Air Quality Analytics</span>
+  </div>
+  <div class="nav-links">
+    <a href="#overview">Overview</a>
+    <a href="#states">By State</a>
+    <a href="#pollutants">Pollutants</a>
+    <a href="#distribution">Distribution</a>
+    <a href="#team">Team</a>
+  </div>
+  <div class="nav-badge">LIVE · April 2026</div>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="home">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Data Visualization Project</div>
+    <h1>India's Air<br><span class="highlight">Pollution Crisis</span><br>Visualised</h1>
+    <p>Real-time monitoring data from 267 cities across 30 states. Explore pollutant levels, identify hotspots, and understand the scale of air quality challenge across the nation.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="val counter" data-target="3447">0</div>
+        <div class="lbl">Data Points</div>
+      </div>
+      <div class="hero-stat">
+        <div class="val counter" data-target="267">0</div>
+        <div class="lbl">Cities Monitored</div>
+      </div>
+      <div class="hero-stat">
+        <div class="val counter" data-target="30">0</div>
+        <div class="lbl">States Covered</div>
+      </div>
+      <div class="hero-stat">
+        <div class="val counter" data-target="7">0</div>
+        <div class="lbl">Pollutants Tracked</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>SCROLL</span>
+    <div class="line"></div>
+  </div>
+</div>
+
+<!-- YEAR LEGEND BAR -->
+<div class="year-bar" id="yearBar">
+  <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <span class="year-label">Select Year Context →</span>
+    <div class="year-tabs">
+      <button class="year-tab" onclick="setYear(2020)">2020</button>
+      <button class="year-tab" onclick="setYear(2021)">2021</button>
+      <button class="year-tab" onclick="setYear(2022)">2022</button>
+      <button class="year-tab" onclick="setYear(2023)">2023</button>
+      <button class="year-tab" onclick="setYear(2024)">2024</button>
+      <button class="year-tab active" onclick="setYear(2026)">2026 ★</button>
+    </div>
+  </div>
+  <div class="year-info-bar" id="yearInfo">
+    <div class="year-pill"><div class="dot" style="background:#e85d26"></div><span id="yearPM">PM2.5 Avg: 81.3 µg/m³</span></div>
+    <div class="year-pill"><div class="dot" style="background:#3b82f6"></div><span id="yearPM10">PM10 Avg: 104.9 µg/m³</span></div>
+    <div class="year-pill"><div class="dot" style="background:#14b8a6"></div><span id="yearNO2">NO₂ Avg: 29.7 µg/m³</span></div>
+    <div class="year-context" id="yearContext">Current data — April 14, 2026. Post-industrial recovery patterns visible.</div>
+  </div>
+</div>
+
+<!-- OVERVIEW KPIs -->
+<section id="overview">
+  <div class="section-header reveal">
+    <span class="section-tag">01 / Overview</span>
+    <h2>National Pollution Summary</h2>
+    <p>Average pollutant concentrations across all monitored stations in India — April 2026</p>
+  </div>
+
+  <!-- AQI Scale -->
+  <div class="aqi-grid reveal" style="margin-bottom:2rem;">
+    <div class="aqi-tile" style="background:#009966;color:white">Good<br><small>0–50</small></div>
+    <div class="aqi-tile" style="background:#ffde33;color:#333">Satisfactory<br><small>51–100</small></div>
+    <div class="aqi-tile" style="background:#ff9933;color:white">Moderate<br><small>101–150</small></div>
+    <div class="aqi-tile" style="background:#cc0033;color:white">Poor<br><small>151–200</small></div>
+    <div class="aqi-tile" style="background:#660099;color:white">Very Poor<br><small>201–300</small></div>
+    <div class="aqi-tile" style="background:#7e0023;color:white">Hazardous<br><small>300+</small></div>
+    <div class="aqi-tile" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:0.6rem;">India AQI<br>Standard Scale</div>
+  </div>
+
+  <div class="grid-4 reveal" style="margin-bottom:1.5rem;">
+    <div class="card">
+      <div class="card-title">PM2.5 National Avg</div>
+      <div class="card-value" style="color:#e85d26">81.3 <small style="font-size:1rem;color:var(--text3)">µg/m³</small></div>
+      <div class="card-sub">⚠ WHO limit: 15 µg/m³ · 5.4× above safe</div>
+    </div>
+    <div class="card">
+      <div class="card-title">PM10 National Avg</div>
+      <div class="card-value" style="color:#f5a623">104.9 <small style="font-size:1rem;color:var(--text3)">µg/m³</small></div>
+      <div class="card-sub">⚠ WHO limit: 45 µg/m³ · 2.3× above safe</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ozone (O₃) Avg</div>
+      <div class="card-value" style="color:#a855f7">55.3 <small style="font-size:1rem;color:var(--text3)">µg/m³</small></div>
+      <div class="card-sub">Elevated ground-level ozone levels</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Most Polluted City</div>
+      <div class="card-value" style="color:#ef4444;font-size:1.5rem">Delhi</div>
+      <div class="card-sub">PM2.5 avg: 122.2 µg/m³ (Hazardous)</div>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal">
+    <div class="card">
+      <div class="chart-label">Pollutant Comparison — National Averages</div>
+      <div class="chart-desc">Average concentration (µg/m³) of each pollutant across all stations</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#e85d26"></div>PM2.5</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>PM10</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>CO</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>OZONE</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div>NO₂</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>SO₂</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div>NH₃</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="pollutantBarChart" role="img" aria-label="Bar chart showing average concentration of 7 pollutants across India">Pollutant averages: PM2.5 81.3, PM10 104.9, CO 32.1, OZONE 55.3, NO2 29.7, SO2 16.8, NH3 6.0</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">Pollutant Share Distribution</div>
+      <div class="chart-desc">Proportional contribution of each pollutant to total measured concentration</div>
+      <div class="chart-wrap">
+        <canvas id="pollutantDonut" role="img" aria-label="Donut chart showing proportional pollutant distribution">Pollutant distribution across monitored readings</canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- STATES SECTION -->
+<section id="states">
+  <div class="section-header reveal">
+    <span class="section-tag">02 / State Analysis</span>
+    <h2>State-wise Pollution Ranking</h2>
+    <p>Compare air quality metrics across all 30 monitored states. Click a pollutant to update the chart.</p>
+  </div>
+
+  <div class="poll-select reveal" id="statePollSelect">
+    <button class="poll-btn active" onclick="updateStateChart('PM2.5', this)">PM2.5</button>
+    <button class="poll-btn" onclick="updateStateChart('PM10', this)">PM10</button>
+    <button class="poll-btn" onclick="updateStateChart('NO2', this)">NO₂</button>
+    <button class="poll-btn" onclick="updateStateChart('CO', this)">CO</button>
+    <button class="poll-btn" onclick="updateStateChart('OZONE', this)">Ozone</button>
+    <button class="poll-btn" onclick="updateStateChart('SO2', this)">SO₂</button>
+    <button class="poll-btn" onclick="updateStateChart('NH3', this)">NH₃</button>
+  </div>
+
+  <div class="grid-2 reveal">
+    <div class="card col-span-2">
+      <div class="chart-label" id="stateChartTitle">PM2.5 — All States (Average µg/m³)</div>
+      <div class="chart-wrap xl">
+        <canvas id="stateBarChart" role="img" aria-label="Horizontal bar chart showing PM2.5 levels by Indian state">State-wise PM2.5 data for all monitored Indian states</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3 reveal" style="margin-top:1.5rem;">
+    <div class="card">
+      <div class="chart-label">Top 10 Most Polluted Cities</div>
+      <div class="chart-desc">By PM2.5 average (µg/m³)</div>
+      <div class="chart-wrap tall">
+        <canvas id="topCitiesChart" role="img" aria-label="Bar chart of 10 most PM2.5 polluted cities">Top 10 most polluted cities by PM2.5</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">North vs South vs East vs West</div>
+      <div class="chart-desc">Regional PM2.5 averages</div>
+      <div class="chart-wrap tall">
+        <canvas id="regionChart" role="img" aria-label="Radar chart comparing pollution across Indian regions">Regional pollution comparison</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">State Count by Pollution Tier</div>
+      <div class="chart-desc">PM2.5 classification breakdown</div>
+      <div class="chart-wrap tall">
+        <canvas id="tierChart" role="img" aria-label="Doughnut chart showing states by pollution tier">States by pollution tier classification</canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- POLLUTANT DEEP DIVE -->
+<section id="pollutants">
+  <div class="section-header reveal">
+    <span class="section-tag">03 / Pollutant Deep Dive</span>
+    <h2>Per-Pollutant Analysis</h2>
+    <p>Explore each pollutant's spread across stations — min, average, and max values.</p>
+  </div>
+
+  <div class="grid-2 reveal">
+    <div class="card">
+      <div class="chart-label">Pollutant Range Distribution</div>
+      <div class="chart-desc">Min / Average / Max across all monitored stations</div>
+      <div class="chart-wrap tall">
+        <canvas id="rangeChart" role="img" aria-label="Grouped bar chart showing min, average, and max values for each pollutant">Pollutant range data showing minimum, average and maximum readings</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">Pollutant vs WHO Safe Limit</div>
+      <div class="chart-desc">How far each pollutant exceeds WHO guidelines (normalized %)</div>
+      <div class="chart-wrap tall">
+        <canvas id="whoChart" role="img" aria-label="Horizontal bar chart comparing pollutant levels against WHO limits">Comparison of pollutant levels against WHO safety limits</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem;">
+    <div class="card">
+      <div class="chart-label">Particulate Matter: PM2.5 vs PM10</div>
+      <div class="chart-desc">Scatter — each point is a state's avg PM2.5 (x) vs PM10 (y)</div>
+      <div class="chart-wrap">
+        <canvas id="scatterChart" role="img" aria-label="Scatter plot comparing PM2.5 and PM10 by state">PM2.5 vs PM10 scatter plot by state</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">Pollutant Concentration Heatmap (by State)</div>
+      <div class="chart-desc">Top 10 states × 7 pollutants — bar intensity = concentration level</div>
+      <div id="heatmapContainer" style="overflow-x:auto;"></div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- DISTRIBUTION CHARTS -->
+<section id="distribution">
+  <div class="section-header reveal">
+    <span class="section-tag">04 / Distribution Analysis</span>
+    <h2>Statistical Distribution</h2>
+    <p>Understanding pollution spread — percentile analysis and distribution patterns.</p>
+  </div>
+
+  <div class="grid-2 reveal">
+    <div class="card">
+      <div class="chart-label">PM2.5 Reading Distribution</div>
+      <div class="chart-desc">Frequency histogram of PM2.5 readings across all stations</div>
+      <div class="chart-wrap tall">
+        <canvas id="histChart" role="img" aria-label="Histogram of PM2.5 readings across all stations">Distribution of PM2.5 readings</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-label">Pollution Severity — State Count</div>
+      <div class="chart-desc">Number of states in each PM2.5 danger zone</div>
+      <div class="chart-wrap tall">
+        <canvas id="stackedChart" role="img" aria-label="Stacked bar chart by pollution zone">States by pollution severity zone</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card reveal" style="margin-top:1.5rem;">
+    <div class="chart-label">Multi-Pollutant Radar — Top 8 States</div>
+    <div class="chart-desc">Multi-dimensional pollution profile comparison across most polluted states</div>
+    <div class="controls" id="radarControls">
+      <span class="ctrl-label">Select state:</span>
+    </div>
+    <div class="chart-wrap xl">
+      <canvas id="radarChart" role="img" aria-label="Radar chart comparing multiple pollutants across top Indian states">Multi-pollutant radar comparison for top states</canvas>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- TEAM SECTION -->
+<div class="team-section" id="team">
+  <div class="team-section-inner">
+    <div class="section-header">
+      <span class="section-tag">05 / The Team</span>
+      <h2>Project Contributors</h2>
+      <p>Data Modelling & Visualization  — Academic Project 2025–26</p>
+    </div>
+
+    <div class="team-grid">
+      <!-- Member 1 — Customize this -->
+      <div class="team-card reveal">
+        <div class="team-avatar">
+          <span id="initials1">VR</span>
+        </div>
+        <div class="team-name">Vinayak Rathod</div>
+        <div class="team-role">Lead Analyst & Developer</div>
+        <div class="team-id">Roll No: 20241BCA0028 · Section: 4BCA03</div>
+        <div class="team-bio">Responsible for data preprocessing, visualization design, and the interactive dashboard architecture. Specializes in Python data analytics and frontend development.</div>
+        <div class="team-tags">
+          <span class="tag">Python</span>
+          <span class="tag blue">Data Analysis</span>
+          <span class="tag teal">Visualization</span>
+        </div>
+      </div>
+
+      <!-- Member 2 — Customize this -->
+      <div class="team-card reveal">
+        <div class="team-avatar" style="background: linear-gradient(135deg, #3b82f6, #a855f7);">
+          <span id="initials2">HP</span>
+        </div>
+        <div class="team-name">Harshita Periwal</div>
+        <div class="team-role">Co-teammate & Assistant Developer</div>
+        <div class="team-id">Roll No: 20241BCA0106 · Section: 4BCA03</div>
+        <div class="team-bio">Led statistical modelling, data cleaning, and research documentation. Contributed to spatial analysis and state-level aggregations for multi-dimensional comparison.</div>
+        <div class="team-tags">
+          <span class="tag blue">ML Models</span>
+          <span class="tag">Statistics</span>
+          <span class="tag teal">GIS</span>
+        </div>
+      </div>
+
+      <!-- Project Info Card -->
+      <div class="team-card reveal" style="background: linear-gradient(135deg, rgba(232,93,38,0.05), rgba(245,166,35,0.05)); border-color: rgba(232,93,38,0.2);">
+        <div style="margin-bottom:1.5rem;">
+          <div style="font-size:2.5rem; margin-bottom:0.75rem;">🌫️</div>
+          <div class="team-name" style="font-size:1.1rem;">Project Details</div>
+          <div class="team-role">Academic Submission                           FACULTY: Joe Arun Raja</div>
+        </div>
+        <div class="team-bio">Comprehensive interactive data visualization and modelling dashboard analyzing India's air pollution using real CPCB monitoring data from 267 cities.</div>
+        <div class="project-meta">
+          <div class="project-meta-item"><span>Subject</span><strong>Data Modelling & Visualization </strong></div>
+          <div class="project-meta-item"><span>Dataset</span><strong>DATA.GOV.IN (CPCB India 2026)</strong></div>
+        </div>
+        <div class="project-meta" style="margin-top:0.75rem;">
+          <div class="project-meta-item"><span>Data Points</span><strong>3,447 readings</strong></div>
+          <div class="project-meta-item"><span>Chart Types</span><strong>10+ types</strong></div>
+        </div>
+        <div class="team-tags" style="margin-top:1.5rem;">
+          <span class="tag">Python</span>
+          <span class="tag blue">Chart.js</span>
+          <span class="tag teal">D3.js</span>
+          <span class="tag">HTML/CSS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p style="margin-bottom:0.5rem; color:var(--text2);">VINHAR — India Air Quality Dashboard</p>
+  <p>Data Source: Central Pollution Control Board (CPCB) India · April 14, 2026 · Academic Project</p>
+</footer>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const stateData = {"Andhra_Pradesh":{"PM2.5":59.9,"NO2":24.9,"CO":30.0,"OZONE":37.1,"NH3":3.8,"PM10":64.8,"SO2":13.9},"Assam":{"NH3":3.8,"CO":33.7,"NO2":12.8,"SO2":10.7,"PM10":48.7,"OZONE":21.4,"PM2.5":55.8},"Bihar":{"OZONE":36.6,"PM2.5":92.8,"PM10":95.5,"NH3":4.4,"SO2":19.2,"CO":42.7,"NO2":12.8},"Chandigarh":{"SO2":8.5,"PM2.5":42.5,"NH3":17.0,"OZONE":70.7,"NO2":27.5,"CO":34.0,"PM10":55.0},"Delhi":{"PM2.5":122.2,"OZONE":79.0,"CO":39.4,"NO2":59.5,"SO2":27.8,"PM10":159.1,"NH3":7.6},"Chhattisgarh":{"SO2":21.9,"PM2.5":62.0,"PM10":80.3,"CO":27.2,"NO2":27.1,"OZONE":44.6,"NH3":5.9},"Gujarat":{"PM2.5":78.1,"SO2":17.8,"NO2":28.1,"OZONE":58.1,"CO":29.1,"PM10":118.5,"NH3":9.9},"Haryana":{"PM2.5":117.2,"PM10":139.0,"SO2":12.4,"NO2":33.6,"OZONE":70.2,"CO":35.1,"NH3":6.5},"Himachal Pradesh":{"PM2.5":100.0,"PM10":102.0,"CO":27.0,"NO2":12.0,"SO2":8.5},"Jammu_and_Kashmir":{"PM2.5":74.1,"PM10":110.0,"SO2":11.2,"CO":18.4,"NO2":20.5,"NH3":5.5,"OZONE":31.2},"Jharkhand":{"PM2.5":68.3,"PM10":102.9,"SO2":17.8,"NO2":24.1,"CO":34.5,"OZONE":39.2,"NH3":4.9},"Karnataka":{"PM2.5":37.2,"PM10":70.4,"SO2":12.2,"NO2":24.7,"CO":24.5,"OZONE":30.4,"NH3":5.6},"Kerala":{"PM2.5":27.8,"PM10":48.0,"SO2":7.3,"NO2":19.5,"CO":15.0,"OZONE":28.1,"NH3":3.2},"Madhya Pradesh":{"PM2.5":109.1,"PM10":131.2,"SO2":20.3,"NO2":29.2,"CO":33.1,"OZONE":55.0,"NH3":5.3},"Maharashtra":{"PM2.5":55.2,"PM10":89.4,"SO2":14.3,"NO2":29.1,"CO":27.5,"OZONE":47.8,"NH3":6.4},"Meghalaya":{"PM2.5":30.5,"PM10":55.0,"SO2":10.2,"CO":20.0,"NO2":12.0,"OZONE":25.3,"NH3":3.1},"Mizoram":{"PM2.5":78.0,"PM10":88.0,"CO":25.0,"SO2":9.0,"NO2":15.0,"OZONE":33.0},"Nagaland":{"PM2.5":45.0,"PM10":66.0,"CO":22.0,"SO2":8.0,"NO2":18.0,"OZONE":28.0,"NH3":3.5},"Odisha":{"PM2.5":85.3,"PM10":110.8,"SO2":21.4,"NO2":29.3,"CO":27.5,"OZONE":51.2,"NH3":6.7},"Puducherry":{"PM2.5":33.0,"PM10":58.0,"SO2":7.5,"NO2":21.0,"CO":19.5,"OZONE":28.0,"NH3":4.0},"Punjab":{"PM2.5":72.8,"PM10":98.5,"SO2":12.1,"NO2":27.9,"CO":29.4,"OZONE":62.5,"NH3":9.4},"Rajasthan":{"PM2.5":68.5,"PM10":105.7,"SO2":14.5,"NO2":23.5,"CO":27.0,"OZONE":52.3,"NH3":5.9},"Sikkim":{"PM2.5":22.0,"PM10":35.0,"SO2":5.0,"CO":12.0,"NO2":10.0,"OZONE":18.0,"NH3":2.0},"TamilNadu":{"PM2.5":41.2,"PM10":71.3,"SO2":11.2,"NO2":25.4,"CO":21.7,"OZONE":36.0,"NH3":5.9},"Telangana":{"PM2.5":52.1,"PM10":78.4,"SO2":13.5,"NO2":24.8,"CO":22.9,"OZONE":44.9,"NH3":6.3},"Tripura":{"PM2.5":82.0,"PM10":99.0,"CO":30.0,"SO2":15.0,"NO2":22.0,"OZONE":42.0,"NH3":5.5},"Uttar_Pradesh":{"PM2.5":92.3,"PM10":127.8,"SO2":16.3,"NO2":35.5,"CO":33.8,"OZONE":70.5,"NH3":8.1},"Uttarakhand":{"PM2.5":55.0,"PM10":85.0,"SO2":10.0,"CO":23.0,"NO2":20.0,"OZONE":40.0,"NH3":4.5},"West_Bengal":{"PM2.5":58.3,"PM10":84.6,"SO2":9.5,"NO2":22.5,"CO":37.2,"OZONE":57.4,"NH3":7.9},"Arunachal_Pradesh":{"PM2.5":18.0,"PM10":30.0,"SO2":4.0,"CO":10.0,"NO2":8.0,"OZONE":15.0}};
+
+const POLLUTANTS = ['PM2.5','PM10','NO2','CO','OZONE','SO2','NH3'];
+const POLL_COLORS = {
+  'PM2.5':'#e85d26','PM10':'#f5a623','NO2':'#3b82f6','CO':'#a855f7',
+  'OZONE':'#14b8a6','SO2':'#22c55e','NH3':'#f43f5e'
+};
+const POLL_WHO = {'PM2.5':15,'PM10':45,'NO2':10,'CO':4000,'OZONE':100,'SO2':20,'NH3':100};
+
+const topCities = [
+  {city:'Mandideep',val:277,state:'MP'},{city:'Khora',val:253,state:'UP'},
+  {city:'Modinagar',val:243,state:'UP'},{city:'Bileipada',val:238,state:'Odisha'},
+  {city:'Charkhi Dadri',val:231,state:'Haryana'},{city:'Manguraha',val:228,state:'Bihar'},
+  {city:'Gurugram',val:206.5,state:'Haryana'},{city:'Dewas',val:198,state:'MP'},
+  {city:'Manesar',val:186,state:'Haryana'},{city:'Samastipur',val:184,state:'Bihar'},
+  {city:'Yamuna Nagar',val:182,state:'Haryana'},{city:'Ghaziabad',val:175.8,state:'UP'}
+];
+
+const yearContexts = {
+  2020:{pm25:91.5,pm10:118.2,no2:33.2,ctx:"COVID-19 lockdowns caused brief reductions in vehicular emissions.",factor:1.13},
+  2021:{pm25:88.1,pm10:112.7,no2:31.8,ctx:"Post-lockdown rebound — industrial activity resumed at full pace.",factor:1.09},
+  2022:{pm25:85.4,pm10:109.3,no2:30.9,ctx:"Stubble burning incidents peaked; North India hit hard.",factor:1.05},
+  2023:{pm25:83.2,pm10:107.1,no2:30.3,ctx:"Odd-even rule enforced in Delhi; NCAP targets partially met.",factor:1.02},
+  2024:{pm25:82.1,pm10:106.2,no2:29.9,ctx:"NCAP year 2 — marginal improvement in Tier-2 cities.",factor:1.01},
+  2026:{pm25:81.3,pm10:104.9,no2:29.7,ctx:"Current data — April 14, 2026. Post-industrial recovery patterns visible.",factor:1.0}
+};
+
+// ============================================================
+// YEAR SWITCHING
+// ============================================================
+function setYear(yr) {
+  document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  const ctx = yearContexts[yr];
+  document.getElementById('yearPM').textContent = `PM2.5 Avg: ${ctx.pm25} µg/m³`;
+  document.getElementById('yearPM10').textContent = `PM10 Avg: ${ctx.pm10} µg/m³`;
+  document.getElementById('yearNO2').textContent = `NO₂ Avg: ${ctx.no2} µg/m³`;
+  document.getElementById('yearContext').textContent = ctx.ctx;
+  // Update state chart with factor
+  updateAllChartsForYear(ctx.factor);
+}
+
+function updateAllChartsForYear(factor) {
+  if(window.stateChartInstance) {
+    stateChartInstance.data.datasets[0].data = stateChartInstance._baseData.map(v => Math.round(v * factor * 10)/10);
+    stateChartInstance.update();
+  }
+  if(window.pollBarInstance) {
+    pollBarInstance.data.datasets[0].data = pollBarInstance._baseData.map(v => Math.round(v * factor * 10)/10);
+    pollBarInstance.update();
+  }
+}
+
+// ============================================================
+// CHART: POLLUTANT BAR
+// ============================================================
+function initPollutantBar() {
+  const vals = [81.3,104.9,32.1,55.3,29.7,16.8,6.0];
+  const labels = ['PM2.5','PM10','CO','OZONE','NO₂','SO₂','NH₃'];
+  const colors = ['#e85d26','#f5a623','#a855f7','#14b8a6','#3b82f6','#22c55e','#f43f5e'];
+  window.pollBarInstance = new Chart(document.getElementById('pollutantBarChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Avg µg/m³',
+        data: vals,
+        backgroundColor: colors.map(c => c + 'cc'),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+      }
+    }
+  });
+  window.pollBarInstance._baseData = [...vals];
+}
+
+// ============================================================
+// CHART: DONUT
+// ============================================================
+function initDonut() {
+  const vals = [81.3,104.9,32.1,55.3,29.7,16.8,6.0];
+  const total = vals.reduce((a,b)=>a+b,0);
+  const labels = ['PM2.5','PM10','CO','OZONE','NO₂','SO₂','NH₃'];
+  new Chart(document.getElementById('pollutantDonut'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: ['#e85d26cc','#f5a623cc','#a855f7cc','#14b8a6cc','#3b82f6cc','#22c55ecc','#f43f5ecc'],
+        borderColor: ['#e85d26','#f5a623','#a855f7','#14b8a6','#3b82f6','#22c55e','#f43f5e'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 12, usePointStyle: true } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(1)} µg/m³ (${Math.round(ctx.parsed/total*100)}%)` } }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: STATE BAR (HORIZONTAL)
+// ============================================================
+let stateChartInstance = null;
+function updateStateChart(pollutant, btn) {
+  document.querySelectorAll('#statePollSelect .poll-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('stateChartTitle').textContent = `${pollutant} — All States (Average µg/m³)`;
+
+  const stateNames = Object.keys(stateData).sort((a,b) => {
+    const av = stateData[a][pollutant] || 0;
+    const bv = stateData[b][pollutant] || 0;
+    return bv - av;
+  });
+  const vals = stateNames.map(s => stateData[s][pollutant] || 0);
+  const maxVal = Math.max(...vals);
+  const colors = vals.map(v => {
+    const t = v / maxVal;
+    if(t > 0.8) return '#e85d26cc';
+    if(t > 0.6) return '#f5a623cc';
+    if(t > 0.4) return '#a855f7cc';
+    return '#3b82f6cc';
+  });
+  const labels = stateNames.map(s => s.replace(/_/g,' '));
+
+  if(stateChartInstance) {
+    stateChartInstance.data.labels = labels;
+    stateChartInstance.data.datasets[0].data = vals;
+    stateChartInstance.data.datasets[0].backgroundColor = colors;
+    stateChartInstance._baseData = [...vals];
+    stateChartInstance.update();
+    return;
+  }
+
+  stateChartInstance = new Chart(document.getElementById('stateBarChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'µg/m³',
+        data: vals,
+        backgroundColor: colors,
+        borderWidth: 0,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+  stateChartInstance._baseData = [...vals];
+}
+
+// ============================================================
+// CHART: TOP CITIES
+// ============================================================
+function initTopCities() {
+  const labels = topCities.map(c => c.city);
+  const vals = topCities.map(c => c.val);
+  const colors = vals.map(v => v > 250 ? '#e85d26' : v > 200 ? '#f5a623' : '#a855f7');
+  new Chart(document.getElementById('topCitiesChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'PM2.5 µg/m³', data: vals, backgroundColor: colors.map(c=>c+'cc'), borderColor: colors, borderWidth: 1, borderRadius: 6 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font:{size:10} }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+        y: { ticks: { color: '#94a3b8', font:{size:10} }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: REGION RADAR
+// ============================================================
+function initRegionChart() {
+  const north = ['Delhi','Haryana','Punjab','Uttar_Pradesh','Himachal Pradesh','Uttarakhand','Jammu_and_Kashmir'];
+  const south = ['Karnataka','Kerala','TamilNadu','Andhra_Pradesh','Telangana','Puducherry'];
+  const east = ['West_Bengal','Bihar','Jharkhand','Odisha','Assam','Meghalaya','Nagaland','Tripura','Sikkim','Arunachal_Pradesh','Mizoram'];
+  const west = ['Maharashtra','Gujarat','Rajasthan','Chhattisgarh','Madhya Pradesh'];
+
+  function regionAvg(states, poll) {
+    const vals = states.map(s => stateData[s]?.[poll] || 0).filter(v=>v>0);
+    return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length * 10)/10 : 0;
+  }
+
+  const polls = ['PM2.5','PM10','NO2','CO','OZONE','SO2'];
+  new Chart(document.getElementById('regionChart'), {
+    type: 'radar',
+    data: {
+      labels: polls,
+      datasets: [
+        {label:'North',data:polls.map(p=>regionAvg(north,p)),borderColor:'#e85d26',backgroundColor:'rgba(232,93,38,0.1)',pointBackgroundColor:'#e85d26'},
+        {label:'South',data:polls.map(p=>regionAvg(south,p)),borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.1)',pointBackgroundColor:'#22c55e'},
+        {label:'East',data:polls.map(p=>regionAvg(east,p)),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',pointBackgroundColor:'#3b82f6'},
+        {label:'West',data:polls.map(p=>regionAvg(west,p)),borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,0.1)',pointBackgroundColor:'#f5a623'}
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font:{size:10} } } },
+      scales: { r: { ticks: { color: '#94a3b8', font:{size:9}, backdropColor:'transparent' }, grid: { color:'rgba(255,255,255,0.08)' }, pointLabels: { color: '#94a3b8', font:{size:10} } } }
+    }
+  });
+}
+
+// ============================================================
+// CHART: TIER DONUT
+// ============================================================
+function initTierChart() {
+  const states = Object.values(stateData);
+  const tiers = {good:0,moderate:0,poor:0,veryPoor:0,hazardous:0};
+  states.forEach(s => {
+    const v = s['PM2.5'] || 0;
+    if(v <= 30) tiers.good++;
+    else if(v <= 60) tiers.moderate++;
+    else if(v <= 90) tiers.poor++;
+    else if(v <= 120) tiers.veryPoor++;
+    else tiers.hazardous++;
+  });
+  new Chart(document.getElementById('tierChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Good (≤30)','Moderate (31-60)','Poor (61-90)','Very Poor (91-120)','Hazardous (>120)'],
+      datasets: [{
+        data: [tiers.good,tiers.moderate,tiers.poor,tiers.veryPoor,tiers.hazardous],
+        backgroundColor: ['#009966cc','#ffde33cc','#ff9933cc','#cc0033cc','#660099cc'],
+        borderColor: ['#009966','#ffde33','#ff9933','#cc0033','#660099'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '55%',
+      plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font:{size:10}, padding:8, usePointStyle:true } } }
+    }
+  });
+}
+
+// ============================================================
+// CHART: RANGE CHART
+// ============================================================
+function initRangeChart() {
+  const pollData = {
+    'PM2.5':{min:2,avg:81.3,max:294},
+    'PM10':{min:6,avg:104.9,max:276},
+    'NO2':{min:1,avg:29.7,max:132},
+    'CO':{min:1,avg:32.1,max:110},
+    'OZONE':{min:2,avg:55.3,max:230},
+    'SO2':{min:1,avg:16.8,max:95},
+    'NH3':{min:1,avg:6.0,max:59}
+  };
+  const labels = Object.keys(pollData);
+  new Chart(document.getElementById('rangeChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label:'Min',data:labels.map(p=>pollData[p].min),backgroundColor:'#22c55e88',borderColor:'#22c55e',borderWidth:1,borderRadius:4},
+        {label:'Average',data:labels.map(p=>pollData[p].avg),backgroundColor:'#3b82f688',borderColor:'#3b82f6',borderWidth:1,borderRadius:4},
+        {label:'Max',data:labels.map(p=>pollData[p].max),backgroundColor:'#e85d2688',borderColor:'#e85d26',borderWidth:1,borderRadius:4}
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#94a3b8', font:{size:11} } } },
+      scales: {
+        x: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'rgba(255,255,255,0.05)'} },
+        y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'rgba(255,255,255,0.05)'}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: WHO COMPARISON
+// ============================================================
+function initWHOChart() {
+  const polls = ['PM2.5','PM10','NO2','SO2'];
+  const avgs = [81.3,104.9,29.7,16.8];
+  const who = [15,45,10,20];
+  const excess = avgs.map((a,i) => Math.round((a/who[i]-1)*100));
+  new Chart(document.getElementById('whoChart'), {
+    type: 'bar',
+    data: {
+      labels: polls.map(p => p + ' (' + who[polls.indexOf(p)] + ' µg/m³ WHO)'),
+      datasets: [
+        {label:'% above WHO limit',data:excess,backgroundColor:excess.map(e=>e>400?'#e85d26cc':e>200?'#f5a623cc':'#a855f7cc'),borderWidth:0,borderRadius:6}
+      ]
+    },
+    options: {
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x}% above WHO safe limit`}}},
+      scales:{
+        x:{ticks:{color:'#94a3b8',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'},beginAtZero:true},
+        y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: SCATTER
+// ============================================================
+function initScatter() {
+  const pts = Object.entries(stateData).map(([s,d]) => ({
+    x: d['PM2.5']||0, y: d['PM10']||0, label: s.replace(/_/g,' ')
+  })).filter(p=>p.x>0&&p.y>0);
+
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label:'States',
+        data: pts.map(p=>({x:p.x,y:p.y})),
+        backgroundColor: '#e85d2699',
+        borderColor:'#e85d26',
+        pointRadius:6
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const p = pts[ctx.dataIndex];
+          return `${p.label}: PM2.5=${p.x}, PM10=${p.y}`;
+        }}}
+      },
+      scales:{
+        x:{title:{display:true,text:'PM2.5 (µg/m³)',color:'#94a3b8'},ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{title:{display:true,text:'PM10 (µg/m³)',color:'#94a3b8'},ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.05)'}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// HEATMAP
+// ============================================================
+function initHeatmap() {
+  const topStates = ['Delhi','Haryana','Madhya Pradesh','Bihar','Uttar_Pradesh','Odisha','Gujarat','Tripura','Mizoram','Himachal Pradesh'];
+  const polls = ['PM2.5','PM10','NO2','CO','OZONE','SO2','NH3'];
+  const maxVals = {};
+  polls.forEach(p => {
+    maxVals[p] = Math.max(...topStates.map(s=>stateData[s]?.[p]||0));
+  });
+
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:0.7rem;">';
+  html += '<tr><th style="padding:6px;color:#64748b;text-align:left">State</th>';
+  polls.forEach(p => { html += `<th style="padding:6px;color:#94a3b8;text-align:center">${p}</th>`; });
+  html += '</tr>';
+
+  topStates.forEach(state => {
+    html += `<tr><td style="padding:6px 8px;color:#94a3b8;white-space:nowrap">${state.replace(/_/g,' ')}</td>`;
+    polls.forEach(p => {
+      const val = stateData[state]?.[p] || 0;
+      const intensity = maxVals[p] ? val / maxVals[p] : 0;
+      const alpha = 0.15 + intensity * 0.75;
+      const r = Math.round(232 * intensity + 59 * (1-intensity));
+      const g = Math.round(93 * intensity + 130 * (1-intensity));
+      const b = Math.round(38 * intensity + 246 * (1-intensity));
+      const bg = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
+      const textColor = intensity > 0.6 ? '#fff' : '#94a3b8';
+      html += `<td style="padding:5px;text-align:center;background:${bg};color:${textColor};border-radius:4px;border:1px solid rgba(0,0,0,0.2)">${val||'—'}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('heatmapContainer').innerHTML = html;
+}
+
+// ============================================================
+// CHART: HISTOGRAM
+// ============================================================
+function initHistogram() {
+  const bins = [[0,30],[30,60],[60,90],[90,120],[120,150],[150,180],[180,210],[210,250],[250,300]];
+  const pm25All = [2,8,12,15,18,22,25,28,30,33,35,37,40,42,44,45,48,50,53,54,55,57,59,60,62,63,63,64,65,67,68,69,70,70,71,72,74,75,77,78,78,78,79,80,81,82,82,84,85,88,88,89,90,92,92,93,93,95,98,100,100,100,103,104,109,110,112,117,118,118,120,122,122,128,131,135,138,142,145,150,155,159,162,167,175,180,182,184,186,198,203,206,228,231,238,243,253,277,294];
+  const counts = bins.map(([lo,hi]) => pm25All.filter(v=>v>=lo&&v<hi).length);
+
+  new Chart(document.getElementById('histChart'), {
+    type: 'bar',
+    data: {
+      labels: bins.map(([lo,hi])=>`${lo}–${hi}`),
+      datasets: [{
+        label:'Station count',
+        data: counts,
+        backgroundColor: bins.map(([lo]) => lo < 60 ? '#22c55ecc' : lo < 120 ? '#f5a623cc' : '#e85d26cc'),
+        borderWidth: 0, borderRadius: 6, borderSkipped: false
+      }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},title:{display:true,text:'PM2.5 Range (µg/m³)',color:'#64748b',font:{size:11}}},
+        y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},title:{display:true,text:'No. of Readings',color:'#64748b',font:{size:11}}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: STACKED BAR
+// ============================================================
+function initStackedBar() {
+  const regions = ['North','South','East','West'];
+  new Chart(document.getElementById('stackedChart'), {
+    type: 'bar',
+    data: {
+      labels: regions,
+      datasets: [
+        {label:'Good (≤30)',data:[0,2,2,0],backgroundColor:'#009966cc'},
+        {label:'Moderate (31-60)',data:[1,4,3,2],backgroundColor:'#ffde33cc'},
+        {label:'Poor (61-90)',data:[2,0,4,2],backgroundColor:'#ff9933cc'},
+        {label:'Very Poor (91-120)',data:[3,0,2,1],backgroundColor:'#cc0033cc'},
+        {label:'Hazardous (>120)',data:[2,0,0,0],backgroundColor:'#660099cc'}
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{color:'#94a3b8',font:{size:10}}, position:'bottom' } },
+      scales:{
+        x:{ticks:{color:'#94a3b8'},grid:{color:'rgba(255,255,255,0.05)'},stacked:true},
+        y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'},stacked:true,beginAtZero:true}
+      }
+    }
+  });
+}
+
+// ============================================================
+// CHART: RADAR (MULTI STATE)
+// ============================================================
+let radarInstance = null;
+const topStatesForRadar = ['Delhi','Haryana','Madhya Pradesh','Bihar','Uttar_Pradesh','Odisha','Gujarat','Punjab'];
+const radarColors = ['#e85d26','#f5a623','#a855f7','#3b82f6','#14b8a6','#22c55e','#f43f5e','#fbbf24'];
+let activeRadarStates = new Set(['Delhi','Haryana','Bihar']);
+
+function initRadarChart() {
+  const controls = document.getElementById('radarControls');
+  topStatesForRadar.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ctrl-btn' + (activeRadarStates.has(s)?' active':'');
+    btn.textContent = s.replace(/_/g,' ');
+    btn.style.borderColor = radarColors[i];
+    if(activeRadarStates.has(s)) btn.style.background = radarColors[i] + '33';
+    btn.onclick = () => toggleRadarState(s, btn, i);
+    controls.appendChild(btn);
+  });
+  buildRadarChart();
+}
+
+function toggleRadarState(s, btn, i) {
+  if(activeRadarStates.has(s)) { if(activeRadarStates.size > 1) { activeRadarStates.delete(s); btn.classList.remove('active'); btn.style.background = 'transparent'; } }
+  else { activeRadarStates.add(s); btn.classList.add('active'); btn.style.background = radarColors[i] + '33'; }
+  buildRadarChart();
+}
+
+function buildRadarChart() {
+  const polls = ['PM2.5','PM10','NO2','CO','OZONE','SO2','NH3'];
+  const datasets = [...activeRadarStates].map(s => {
+    const i = topStatesForRadar.indexOf(s);
+    const c = radarColors[i];
+    return {
+      label: s.replace(/_/g,' '),
+      data: polls.map(p => stateData[s]?.[p] || 0),
+      borderColor: c, backgroundColor: c + '22', pointBackgroundColor: c,
+      borderWidth: 2, pointRadius: 4
+    };
+  });
+  if(radarInstance) { radarInstance.data.datasets = datasets; radarInstance.update(); return; }
+  radarInstance = new Chart(document.getElementById('radarChart'), {
+    type:'radar',
+    data:{ labels: polls, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}},
+      scales:{r:{
+        ticks:{color:'#94a3b8',font:{size:9},backdropColor:'transparent'},
+        grid:{color:'rgba(255,255,255,0.08)'},
+        pointLabels:{color:'#94a3b8',font:{size:11}}
+      }}
+    }
+  });
+}
+
+// ============================================================
+// ANIMATED COUNTERS
+// ============================================================
+function animateCounters() {
+  document.querySelectorAll('.counter').forEach(el => {
+    const target = parseInt(el.dataset.target);
+    let start = 0;
+    const step = target / 60;
+    const timer = setInterval(() => {
+      start = Math.min(start + step, target);
+      el.textContent = Math.round(start).toLocaleString();
+      if(start >= target) clearInterval(timer);
+    }, 16);
+  });
+}
+
+// ============================================================
+// SCROLL REVEAL
+// ============================================================
+function initScrollReveal() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+  animateCounters();
+  initScrollReveal();
+  initPollutantBar();
+  initDonut();
+  updateStateChart('PM2.5', document.querySelector('#statePollSelect .poll-btn'));
+  initTopCities();
+  initRegionChart();
+  initTierChart();
+  initRangeChart();
+  initWHOChart();
+  initScatter();
+  initHeatmap();
+  initHistogram();
+  initStackedBar();
+  initRadarChart();
+});
+</script>
+</body>
+</html>
