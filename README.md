@@ -96,3 +96,7 @@ india-air-quality-analysis/
 │
 ├── requirements.txt                   # List of Python dependencies
 └── README.md                          # Project documentation
+
+---
+
+👥 The TeamThis project was a collaborative academic effort for the Data Modelling & Visualization course (2025–26) at Presidency University.NameRoleFocus AreasVinayak RathodLead Analyst & DeveloperData preprocessing, visualization design, & dashboard architecture.Harshita PeriwalCo-teammate & AssistantStatistical modelling, data cleaning, & research documentation.Faculty Supervisor: Joe Arun Raja
