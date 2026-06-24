@@ -1,7 +1,7 @@
 <div align="center">
   
 # 🌫️ India Air Quality Analytics & Visualization
-**A deep-dive data science project analyzing the air pollution crisis across India.**
+**A deep-dive data science project analyzing the air pollution crisis across India.** 
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)
